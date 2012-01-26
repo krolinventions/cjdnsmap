@@ -19,13 +19,14 @@
 #
 
 import pydot
-import requests
 import re
+import socket
+import httplib2
 
 #################################################
 # code from http://effbot.org/zone/bencode.htm
 #
-# Copyright © 1995-2010 by Fredrik Lundh 
+# Copyright (c) 1995-2010 by Fredrik Lundh 
 #
 # By obtaining, using, and/ or copying this software and/or its 
 # associated documentation, you agree that you have read, understood, 
@@ -96,27 +97,6 @@ def decode(text):
 # end code from http://effbot.org/zone/bencode.htm
 ###################################################
 
-names = {
-    'fc37:8636:7dea:7f3d:6514:ce73:0f7b:f29d': 'gerard_',
-    'fcd9:6fcc:642c:c70d:5ff2:63c3:8ead:c9ad': 'cjd France',
-    'fc38:4c2c:1a8f:3981:f2e7:c2b9:6870:6e84': 'sql.btc [hub]',
-    'fc9d:2ef7:3fb4:70e1:847c:d810:d5e3:fe21': 'web.btc [hub]',
-    'fc37:acb2:544b:ed86:8b8d:9945:add7:b119': 'web2.btc [hub]',
-    'fc6c:32ab:968b:0272:ab3c:ad1f:94bd:538e': 'windowlappie.iR [hub]',
-    'fca0:e44d:c4ae:8ff8:dafc:5558:4688:35f5': 'backtrack-lappie.iR',
-    'fc88:7c4e:8b9a:944d:5ebb:9a46:f67c:e387': 'backtrack-pc.iR',
-    'fcae:070a:2a64:5293:f191:6386:fc33:eb4c': 'xubuntu.iR',
-    'fcf7:75f0:82e3:327c:7112:b9ab:d1f9:bbbe': 'fileserv.iR',
-    'fcae:99fd:1524:e7f7:fcfa:9c6d:db2a:eb31': 'bagga',
-    'fce5:de17:cbde:c87b:5289:0556:8b83:c9c8': 'node.c (httpd)',
-    'fcf1:a7a8:8ec0:589b:c64c:cc95:1ced:3679': 'kvm.c (pings)',
-    'fcec:0cbd:3c03:1a2a:063f:c917:b1db:1695': 'napier (ircd)',
-    'fc3a:2804:615a:b34f:abfe:c7d5:65d6:f50c': 'derp (httpd)', # West coast
-    'fcd7:61f9:7bd0:4060:851e:1ba9:471f:7f52': 'slw',
-    'fc13:6176:aaca:8c7f:9f55:924f:26b3:4b14': 'DIASPORA *ALPHA',
-    'fc5d:baa5:61fc:6ffd:9554:67f0:e290:7535': 'Mikey_2', # Detroit
-    }
-
 class route:
     def __init__(self, ip, path, link):
         self.ip = ip
@@ -160,7 +140,22 @@ class route:
         print 'no parent found for',self.name
         return None
         
-import socket
+# retrieve the node names from the page maintained by ircerr
+names = {}
+h = httplib2.Http(".cache")
+r, content = h.request('http://[fc38:4c2c:1a8f:3981:f2e7:c2b9:6870:6e84]/ipv6-cjdnet.data.txt', "GET")
+
+for l in content.split('\n'):
+    l = l.strip()
+    if not l or l.startswith('#'):
+        continue
+    d = l.split(' ')
+    if len(d) < 2:
+        continue # use the standard last two bytes
+    names[d[0]]=d[1]
+
+# retrieve the routing data from the admin interface
+# FIXME: read these from the commandline or even from the config
 
 HOST = 'localhost'
 PORT = 11234
@@ -207,7 +202,6 @@ def linked(a,b):
 def set_linked(a,b):
     already_linked.add((a,b))
     already_linked.add((b,a))
-
 
 graph = pydot.Dot(graph_type='graph')
 def add_edges(active,color):
