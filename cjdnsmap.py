@@ -203,7 +203,7 @@ def set_linked(a,b):
     already_linked.add((a,b))
     already_linked.add((b,a))
 
-graph = pydot.Dot(graph_type='graph', K='0.25', splines='true', dpi='70', maxiter='5000')
+graph = pydot.Dot(graph_type='graph', K='0.25', splines='true', dpi='70', maxiter='10000')
 def add_edges(active,color):
     for r in routes:
         if active and r.quality == 0:
@@ -215,7 +215,11 @@ def add_edges(active,color):
             pn = nodes[parent.ip]
             rn = nodes[r.ip]
             if not linked(pn,rn):
-                edge = pydot.Edge(pn,rn, color=color, len='0.5')
+                if active:
+                    weight = '1.0'
+                else:
+                    weight = '0.1'
+                edge = pydot.Edge(pn,rn, color=color, len='0.5', weight=weight, minlen='0.5')
                 graph.add_edge(edge)
                 set_linked(pn,rn)
 add_edges(True,'black')
