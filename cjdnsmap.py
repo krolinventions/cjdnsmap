@@ -22,6 +22,7 @@ import pydot
 import re
 import socket
 import httplib2
+import sys
 
 #################################################
 # code from http://effbot.org/zone/bencode.htm
@@ -125,9 +126,7 @@ class route:
         route = route.replace('y','0001')
         route = route.replace('x','0000')
         self.route = route[::-1].rstrip('0')[:-1]
-        print self.name, self.route
         self.quality = link
-        print self.quality
         
     def find_parent(self, routes):
         parents = [(len(other.route),other) for other in routes if self.route.startswith(other.route) and self != other]
@@ -135,10 +134,13 @@ class route:
         parents.sort(reverse=True)
         if parents:
             parent = parents[0][1]
-            print self.name,'has as parent',parent.name, self.route,parent.route
             return parent
-        print 'no parent found for',self.name
         return None
+        
+if len(sys.argv) > 1:
+    filename = sys.argv[-1]
+else:
+    filename = 'map.png'
         
 # retrieve the node names from the page maintained by ircerr
 names = {}
@@ -171,7 +173,6 @@ while True:
 s.close()
 data = data.strip()
 bencode = decode(data)
-print bencode
 
 routes = []
 for r in bencode['routingTable']:
@@ -185,7 +186,6 @@ routes = [q[1] for q in tmp]
 
 nodes = {}
 for r in routes:
-    print r.name,r.quality
     if not r.ip in nodes:
         nodes[r.ip] = pydot.Node(r.name)
 
@@ -221,4 +221,5 @@ def add_edges(active,color):
 add_edges(True,'black')
 add_edges(False,'grey')
     
-graph.write_png('map.png', prog='dot') # dot neato twopi
+graph.write_png(filename, prog='dot') # dot neato twopi
+print('map written to {0}'.format(filename))
