@@ -203,7 +203,7 @@ def set_linked(a,b):
     already_linked.add((a,b))
     already_linked.add((b,a))
 
-graph = pydot.Dot(graph_type='graph')
+graph = pydot.Dot(graph_type='graph', K='0.25', splines='true', dpi='70')
 def add_edges(active,color):
     for r in routes:
         if active and r.quality == 0:
@@ -215,11 +215,11 @@ def add_edges(active,color):
             pn = nodes[parent.ip]
             rn = nodes[r.ip]
             if not linked(pn,rn):
-                edge = pydot.Edge(pn,rn, color=color)
+                edge = pydot.Edge(pn,rn, color=color, len='0.5')
                 graph.add_edge(edge)
                 set_linked(pn,rn)
 add_edges(True,'black')
 add_edges(False,'grey')
     
-graph.write_png(filename, prog='dot') # dot neato twopi
+graph.write_png(filename, prog='fdp') # dot neato twopi fdp
 print('map written to {0}'.format(filename))
