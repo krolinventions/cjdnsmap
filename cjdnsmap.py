@@ -99,12 +99,9 @@ def decode(text):
 ###################################################
 
 class route:
-    def __init__(self, ip, path, link):
+    def __init__(self, ip, name, path, link):
         self.ip = ip
-        if self.ip in names:
-            self.name = names[self.ip]
-        else:
-            self.name = self.ip.split(':')[-1]
+        self.name = name
         route = path
         route = route.replace('.','')
         route = route.replace('0','x')
@@ -147,6 +144,9 @@ names = {}
 h = httplib2.Http(".cache")
 r, content = h.request('http://[fc38:4c2c:1a8f:3981:f2e7:c2b9:6870:6e84]/ipv6-cjdnet.data.txt', "GET")
 
+existing_names = set()
+doubles = set()
+nameip = []
 for l in content.split('\n'):
     l = l.strip()
     if not l or l.startswith('#'):
@@ -154,7 +154,18 @@ for l in content.split('\n'):
     d = l.split(' ')
     if len(d) < 2:
         continue # use the standard last two bytes
-    names[d[0]]=d[1]
+    ip   = d[0]
+    name = d[1]
+    nameip.append((name,ip))
+    if name in existing_names:
+        doubles.add(name)
+    existing_names.add(name)
+    
+for name,ip in nameip:
+    if not name in doubles:
+        names[ip]=name
+    else:
+        names[ip]=name + ' ' + ip.split(':')[-1]
 
 # retrieve the routing data from the admin interface
 # FIXME: read these from the commandline or even from the config
@@ -176,7 +187,14 @@ bencode = decode(data)
 
 routes = []
 for r in bencode['routingTable']:
-    r = route(r['ip'],r['path'],r['link'])
+    ip = r['ip']
+    path = r['path']
+    link = r['link']
+    if ip in names:
+        name = names[ip]
+    else:
+        name = ip.split(':')[-1]
+    r = route(ip,name,path,link)
     routes.append(r)
         
 # sort the routes on quality
