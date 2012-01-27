@@ -1,0 +1,36 @@
+This script will access the cjdns admin interface to retrieve the 
+routing table. It will also download the list of node names 
+maintained by ircerr. After some magic to figure out which nodes are 
+probably connected it will create a Graphiviz graph of the network.
+
+The labels are cjdns nodes. Some nodes have names, for other nodes 
+the last part of their cjdns IPv6 address is shown. Black lines are 
+connections between nodes which your node considers active. This 
+means it has seen traffic flow over the link. Grey lines are routes 
+that are in the routing table and should work but they have not 
+(yet) been used.
+
+To use this script, you need:
+- a recent version of Python (developed on 2.7)
+- the following python modules
+ - pydot
+ - re
+ - socket
+ - httplib2
+- a running cjdroute with the admin interface enabled
+- access to the cjdns network (Hyperboria) to download the list of node
+  names
+
+To enable the admin interface in cjdns add the following to your config
+(and restart cjdroute):
+    "admin":
+    {
+        // Port to bind the admin TCP server to.
+        "bind": "127.0.0.1:11234"
+    }
+    
+You can then run the script like this:
+$ ./cjdnsmap.py map.png
+map written to map.png
+
+That's it, you've got a map of the network from your own viewpoint.
