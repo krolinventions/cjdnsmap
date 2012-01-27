@@ -202,10 +202,16 @@ tmp = [(r.quality,r) for r in routes]
 tmp.sort(reverse=True)
 routes = [q[1] for q in tmp]
 
+class MyNode:
+    def __init__(self, name):
+        self.name = name
+        self.connections = 0
+        self.node = pydot.Node(name, shape='box')
+
 nodes = {}
 for r in routes:
     if not r.ip in nodes:
-        nodes[r.ip] = pydot.Node(r.name)
+        nodes[r.ip] = MyNode(r.name)
 
 # we need to find the parents for every node and draw a line
 # to do this we take the route and find the node with the longest
@@ -221,7 +227,7 @@ def set_linked(a,b):
     already_linked.add((a,b))
     already_linked.add((b,a))
 
-graph = pydot.Dot(graph_type='graph', K='0.25', splines='true', dpi='70', maxiter='10000')
+edges = []
 def add_edges(active,color):
     for r in routes:
         if active and r.quality == 0:
@@ -234,14 +240,23 @@ def add_edges(active,color):
             rn = nodes[r.ip]
             if not linked(pn,rn):
                 if active:
-                    weight = '1.0'
+                    pn.connections += 1
+                    rn.connections += 1
+                    weight = '0.05'
                 else:
-                    weight = '0.1'
-                edge = pydot.Edge(pn,rn, color=color, len='0.5', weight=weight, minlen='0.5')
-                graph.add_edge(edge)
+                    weight = '0'
+                edge = pydot.Edge(pn.node,rn.node, color=color, len='6', weight=weight, minlen='4')
+                edges.append(edge)
                 set_linked(pn,rn)
 add_edges(True,'black')
 add_edges(False,'grey')
+
+graph = pydot.Dot(graph_type='graph', K='0.25', splines='true', dpi='60', maxiter='10000', ranksep='0', nodesep='0', epsilon='0.01', concentrate='true')
+for n in nodes.itervalues():
+    graph.add_node(n.node)
+for edge in edges:
+    graph.add_edge(edge)
+
     
-graph.write_png(filename, prog='fdp') # dot neato twopi fdp
+graph.write_png(filename, prog='fdp') # dot neato twopi fdp circo
 print('map written to {0}'.format(filename))
