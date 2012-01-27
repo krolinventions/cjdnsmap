@@ -287,14 +287,20 @@ for r in routes:
 # overlap at the end
 # we then assume this is the parent
 
-already_linked = set()
+link_strength = {}
 def linked(a,b):
     if a == b:
         return True
-    return (a,b) in already_linked
-def set_linked(a,b):
-    already_linked.add((a,b))
-    already_linked.add((b,a))
+    a,b = sorted([a,b])
+    return (a,b) in link_strength
+def set_link_strength(a,b,s):
+    a,b = sorted([a,b])
+    if not linked(a,b):
+        link_strength[(a,b)] = s
+    else:
+        l = link_strength[(a,b)]
+        if s > l:
+            link_strength[(a,b)] = s
 
 edges = []
 def add_edges(active,color):
@@ -308,23 +314,34 @@ def add_edges(active,color):
             pn = nodes[parent.ip]
             rn = nodes[r.ip]
             if not linked(pn,rn):
+                pn.connections += 1
+                rn.connections += 1
                 if active:
-                    pn.connections += 1
-                    rn.connections += 1
-                    weight = '0.05'
+                    weight = '1'
                 else:
-                    weight = '0'
-                edges.append((pn,rn,weight,color))
-                set_linked(pn,rn)
+                    weight = '0.01'
+                edges.append((pn,rn,weight,color,r.quality))
+            set_link_strength(pn,rn,r.quality)
 add_edges(True,'black')
 add_edges(False,'grey')
 
-graph = pydot.Dot(graph_type='graph', K='0.25', splines='true', dpi='60', maxiter='10000', ranksep='0', nodesep='0', epsilon='0.01', concentrate='true')
+graph = pydot.Dot(graph_type='graph', K='2', splines='true', dpi='50', maxiter='10000', ranksep='2', nodesep='1', epsilon='0.1', overlap='true')
 calculate_family_hues()
 for n in nodes.itervalues():
     graph.add_node(n.Node())
-for pn,rn,weight,color in edges:
-    edge = pydot.Edge(pn.node,rn.node, color=color, len='6', weight=weight, minlen='4')
+for pn,rn,weight,color,quality in edges:
+    width = math.log(float(quality)+1)
+    if width < 1:
+        width = 1
+    style = 'setlinewidth({0})'.format(width)
+    len = '0.5'
+    minlen = '0.5'
+    if quality > 0:
+        len = str(6/width)
+    if pn.connections == 1 or rn.connections == 1:
+        print pn.name,rn.name
+        weight = '1'
+    edge = pydot.Edge(pn.node,rn.node, color=color, len=len, weight=weight, minlen=minlen, style=style)
     graph.add_edge(edge)
 
     
