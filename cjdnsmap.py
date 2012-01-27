@@ -234,6 +234,7 @@ class MyNode:
     def __init__(self, name):
         self.name = name
         self.connections = 0
+        self.active_connections = 0
         p = self.name.split('.')
         if len(p) == 1:
             self.family = None
@@ -243,7 +244,7 @@ class MyNode:
                 family_set.add(self.family)
                 family_list.append(self.family)
     def Node(self):
-        if self.connections:
+        if self.active_connections:
             color = 'black'
             if self.name in existing_names:
                 fontcolor = 'black'
@@ -318,6 +319,8 @@ def add_edges(active,color):
                 rn.connections += 1
                 if active:
                     weight = '1'
+                    pn.active_connections += 1
+                    rn.active_connections += 1
                 else:
                     weight = '0.01'
                 edges.append((pn,rn,weight,color,r.quality))
@@ -339,7 +342,6 @@ for pn,rn,weight,color,quality in edges:
     if quality > 0:
         len = str(6/width)
     if pn.connections == 1 or rn.connections == 1:
-        print pn.name,rn.name
         weight = '1'
     edge = pydot.Edge(pn.node,rn.node, color=color, len=len, weight=weight, minlen=minlen, style=style)
     graph.add_edge(edge)
