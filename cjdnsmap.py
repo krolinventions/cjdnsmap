@@ -23,6 +23,7 @@ import re
 import socket
 import httplib2
 import sys
+import math
 
 #################################################
 # code from http://effbot.org/zone/bencode.htm
@@ -80,6 +81,48 @@ def decode(text):
 
 # end code from http://effbot.org/zone/bencode.htm
 ###################################################
+
+###################################################
+def hsv_to_rgb(h,s,v):
+    """ convert hsv to rgb. h is 0-360, s and v are 0-1"""
+    r = 0.0
+    g = 0.0
+    b = 0.0
+    chroma = v * s
+    h_dash = h / 60.0
+    x = chroma * (1.0 - math.fabs((h_dash % 2.0) - 1.0))
+ 
+    if h_dash < 1.0:
+        r = chroma
+        g = x
+    elif h_dash < 2.0:
+        r = x
+        g = chroma
+    elif h_dash < 3.0:
+        g = chroma
+        b = x
+    elif h_dash < 4.0:
+        g = x
+        b = chroma
+    elif h_dash < 5.0:
+        r = x
+        b = chroma
+    elif h_dash < 6.0:
+        r = chroma
+        b = x
+ 
+    m = v - chroma
+    r += m
+    g += m
+    b += m
+    return (r,g,b)
+    
+def hsv_to_color(h,s,v):
+    r,g,b = hsv_to_rgb(h,s,v)
+    return '#{0:02x}{1:02x}{2:02x}'.format(int(r*255),int(g*255),int(b*255))
+
+###################################################
+
 
 class route:
     def __init__(self, ip, name, path, link):
@@ -185,17 +228,54 @@ tmp = [(r.quality,r) for r in routes]
 tmp.sort(reverse=True)
 routes = [q[1] for q in tmp]
 
+family_set = set()
+family_list = []
 class MyNode:
     def __init__(self, name):
         self.name = name
         self.connections = 0
+        p = self.name.split('.')
+        if len(p) == 1:
+            self.family = None
+        else:
+            self.family = '.'.join(p[1::])
+            if not self.family in family_set:
+                family_set.add(self.family)
+                family_list.append(self.family)
     def Node(self):
         if self.connections:
             color = 'black'
+            if self.name in existing_names:
+                fontcolor = 'black'
+            else:
+                fontcolor = 'black'
+            if not self.family:
+                fillcolor = 'white'
+            else:
+                h = family_hues[self.family]
+                s = 0.3
+                v = 1.0
+                fillcolor = hsv_to_color(h,s,v)
         else:
-            color = 'grey'
-        self.node = pydot.Node(self.name, shape='box', color=color, fontcolor=color)
+            if not self.family:
+                h = 0.0
+                s = 0.0
+                v = 0.6
+            else:
+                h = family_hues[self.family]
+                s = 0.5
+                v = 0.7
+            color = hsv_to_color(h,s,v)
+            fontcolor = color
+            fillcolor = 'white'
+        self.node = pydot.Node(self.name, shape='box', color=color, fontcolor=fontcolor, style='filled', fillcolor=fillcolor)
         return self.node
+        
+family_hues = {}
+def calculate_family_hues():
+    family_list.sort() # so they get the same color every time
+    for i,f in enumerate(family_list):
+        family_hues[f] = 360.0/len(family_list)*i
 
 nodes = {}
 for r in routes:
@@ -240,6 +320,7 @@ add_edges(True,'black')
 add_edges(False,'grey')
 
 graph = pydot.Dot(graph_type='graph', K='0.25', splines='true', dpi='60', maxiter='10000', ranksep='0', nodesep='0', epsilon='0.01', concentrate='true')
+calculate_family_hues()
 for n in nodes.itervalues():
     graph.add_node(n.Node())
 for pn,rn,weight,color in edges:
