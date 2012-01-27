@@ -189,7 +189,13 @@ class MyNode:
     def __init__(self, name):
         self.name = name
         self.connections = 0
-        self.node = pydot.Node(name, shape='box')
+    def Node(self):
+        if self.connections:
+            color = 'black'
+        else:
+            color = 'grey'
+        self.node = pydot.Node(self.name, shape='box', color=color, fontcolor=color)
+        return self.node
 
 nodes = {}
 for r in routes:
@@ -228,16 +234,16 @@ def add_edges(active,color):
                     weight = '0.05'
                 else:
                     weight = '0'
-                edge = pydot.Edge(pn.node,rn.node, color=color, len='6', weight=weight, minlen='4')
-                edges.append(edge)
+                edges.append((pn,rn,weight,color))
                 set_linked(pn,rn)
 add_edges(True,'black')
 add_edges(False,'grey')
 
 graph = pydot.Dot(graph_type='graph', K='0.25', splines='true', dpi='60', maxiter='10000', ranksep='0', nodesep='0', epsilon='0.01', concentrate='true')
 for n in nodes.itervalues():
-    graph.add_node(n.node)
-for edge in edges:
+    graph.add_node(n.Node())
+for pn,rn,weight,color in edges:
+    edge = pydot.Edge(pn.node,rn.node, color=color, len='6', weight=weight, minlen='4')
     graph.add_edge(edge)
 
     
