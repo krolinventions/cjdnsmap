@@ -166,9 +166,11 @@ else:
     filename = 'map.png'
         
 # retrieve the node names from the page maintained by ircerr
+page = 'http://[fc38:4c2c:1a8f:3981:f2e7:c2b9:6870:6e84]/ipv6-cjdnet.data.txt'
+print('Downloading the list of node names from {0} ...'.format(page))
 names = {}
 h = httplib2.Http(".cache")
-r, content = h.request('http://[fc38:4c2c:1a8f:3981:f2e7:c2b9:6870:6e84]/ipv6-cjdnet.data.txt', "GET")
+r, content = h.request(page, "GET")
 
 existing_names = set()
 doubles = set()
@@ -195,9 +197,9 @@ for name,ip in nameip:
 
 # retrieve the routing data from the admin interface
 # FIXME: read these from the commandline or even from the config
-
 HOST = 'localhost'
 PORT = 11234
+print('Retrieving the routing table from the admin interface at {0} port {1}'.format(HOST,PORT))
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.connect((HOST, PORT))
 s.send('d1:q19:NodeStore_dumpTable4:txid4:....e')
@@ -346,6 +348,6 @@ for pn,rn,weight,color,quality in edges:
     edge = pydot.Edge(pn.node,rn.node, color=color, len=len, weight=weight, minlen=minlen, style=style)
     graph.add_edge(edge)
 
-    
+print('Generating the map...')
 graph.write_png(filename, prog='fdp') # dot neato twopi fdp circo
-print('map written to {0}'.format(filename))
+print('Map written to {0}'.format(filename))
