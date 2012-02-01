@@ -292,8 +292,6 @@ for r in routes:
 
 link_strength = {}
 def linked(a,b):
-    if a == b:
-        return True
     a,b = sorted([a,b])
     return (a,b) in link_strength
 def set_link_strength(a,b,s):
