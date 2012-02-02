@@ -149,7 +149,7 @@ class route:
         route = route.replace('y','0001')
         route = route.replace('x','0000')
         self.route = route[::-1].rstrip('0')[:-1]
-        self.quality = link
+        self.quality = link / 536870.0 # LINK_STATE_MULTIPLIER
         
     def find_parent(self, routes):
         parents = [(len(other.route),other) for other in routes if self.route.startswith(other.route) and self != other]
