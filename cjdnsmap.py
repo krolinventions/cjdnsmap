@@ -209,6 +209,7 @@ while True:
     data += r
     if not r or r.endswith('....e\n'):
         break
+s.shutdown(socket.SHUT_RDWR)
 s.close()
 data = data.strip()
 bencode = decode(data)
