@@ -24,6 +24,7 @@ import socket
 import httplib2
 import sys
 import math
+import json
 
 #################################################
 # code from http://effbot.org/zone/bencode.htm
@@ -165,8 +166,8 @@ if len(sys.argv) > 1:
 else:
     filename = 'map.png'
         
-# retrieve the node names from the page maintained by ircerr
-page = 'http://[fc38:4c2c:1a8f:3981:f2e7:c2b9:6870:6e84]/ipv6-cjdnet.data.txt'
+# retrieve the node names from the page maintained by Mikey
+page = 'http://[fc5d:baa5:61fc:6ffd:9554:67f0:e290:7535]/nodes/list.json'
 print('Downloading the list of node names from {0} ...'.format(page))
 names = {}
 h = httplib2.Http(".cache")
@@ -174,26 +175,13 @@ r, content = h.request(page, "GET")
 
 existing_names = set()
 doubles = set()
-nameip = []
-for l in content.split('\n'):
-    l = l.strip()
-    if not l or l.startswith('#'):
-        continue
-    d = l.split(' ')
-    if len(d) < 2:
-        continue # use the standard last two bytes
-    ip   = d[0]
-    name = d[1]
-    nameip.append((name,ip))
-    if name in existing_names:
-        doubles.add(name)
-    existing_names.add(name)
-    
-for name,ip in nameip:
-    if not name in doubles:
-        names[ip]=name
+nameip = json.loads(content)['nodes']
+
+for node in nameip:
+    if not node['name'] in doubles:
+        names[node['ip']]=node['name']
     else:
-        names[ip]=name + ' ' + ip.split(':')[-1]
+        names[node['ip']]=node['name'] + ' ' + ip.split(':')[-1]
 
 # retrieve the routing data from the admin interface
 # FIXME: read these from the commandline or even from the config
@@ -209,7 +197,6 @@ while True:
     data += r
     if not r or r.endswith('....e\n'):
         break
-s.shutdown(socket.SHUT_RDWR)
 s.close()
 data = data.strip()
 bencode = decode(data)
