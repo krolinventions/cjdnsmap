@@ -195,7 +195,7 @@ data = ''
 while True:
     r = s.recv(1024)
     data += r
-    if not r or r.endswith('....e\n'):
+    if not r or len(data) % 1024:
         break
 s.shutdown(socket.SHUT_RDWR)
 s.close()
