@@ -200,7 +200,6 @@ else:
     filename = 'map.png'
         
 # retrieve the node names from the page maintained by Mikey
-"""
 page = 'http://[fc5d:baa5:61fc:6ffd:9554:67f0:e290:7535]/nodes/list.json'
 print('Downloading the list of node names from {0} ...'.format(page))
 names = {}
@@ -216,6 +215,7 @@ for node in nameip:
         names[node['ip']]=node['name']
     else:
         names[node['ip']]=node['name'] + ' ' + ip.split(':')[-1]
+
 """
 page = 'http://ircerr.bt-chat.com/cjdns/ipv6-cjdnet.data.txt'
 print('Downloading the list of node names from {0} ...'.format(page))
@@ -245,36 +245,8 @@ for name,ip in nameip:
         names[ip]=name
     else:
         names[ip]=name + ' ' + ip.split(':')[-1]
+"""
 
-# retrieve the routing data from the admin interface
-#HOST = 'localhost'
-#PORT = 11234
-#print('Retrieving the routing table from the admin interface at {0} port {1}'.format(HOST,PORT))
-#s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-#s.connect((HOST, PORT))
-#s.send('d1:q19:NodeStore_dumpTable4:txid4:....e')
-#data = ''
-#while True:
-#    r = s.recv(1024)
-#    data += r
-#    if not r or len(data) % 1024:
-#        break
-#s.shutdown(socket.SHUT_RDWR)
-#s.close()
-#data = data.strip()
-#bencode = decode(data)
-
-#routes = []
-#for r in bencode['routingTable']:
-#    ip = r['ip']
-#    path = r['path']
-#    link = r['link']
-#    if ip in names:
-#        name = names[ip]
-#    else:
-#        name = ip.split(':')[-1]
-#    r = route(ip,name,path,link)
-#    routes.append(r)
 routes = [];
 i = 0;
 while True:
@@ -284,10 +256,6 @@ while True:
         if r['ip'] in names:
             name = names[r['ip']]
         routes.append(route(r['ip'],name,r['path'],r['link']))
-#    for entry in routes:
-#        if (entry['link'] != 0):
-#            addresses[entry['ip']] = entry['path']
-#        #print entry['ip'] + '@' + entry['path'] + ' - ' + str(entry['link'])
     if not 'more' in table:
         break
     i += 1
