@@ -18,13 +18,45 @@
 # - Color nodes depending on the number of connections
 #
 
-import pydot
 import re
 import socket
-import httplib2
 import sys
 import math
 import json
+try:
+    import httplib2
+except:
+    print "Requires httplib2, try: "
+    print "sudo easy_install httplib2"
+    sys.exit()
+try:
+    import pydot
+except:
+    print "Requires pydot, try:"
+    print "sudo easy_install pydot"
+    sys.exit()
+try:
+    from cjdns import cjdns_connect
+except:
+    print "Requires cjdns python module. It should've been included"
+    print "with this program. Please ensure that it's in the path. It"
+    print "also comes with cjdns, check contrib/python/ in the cjdns source"
+    sys.exit()
+
+######## SETTINGS ###############
+cjdadmin_ip = "127.0.0.1"	#
+cjdadmin_port = 11234		#
+cjdadmin_pass = "insecure_pass" #
+#################################
+
+if len(sys.argv) == 4:
+    cjdadmin_ip = sys.argv[1]
+    cjdadmin_port = sys.argv[2]
+    cjdadmin_pass = sys.argv[3]
+elif len(sys.argv) != 1:
+    print "Usage is:"
+    print sys.argv[0] + " <ip> <port> <pass>"
+    print "Or just specify it at the top of the python file"
 
 #################################################
 # code from http://effbot.org/zone/bencode.htm
@@ -125,6 +157,7 @@ def hsv_to_color(h,s,v):
 ###################################################
 
 
+cjdns = cjdns_connect(cjdadmin_ip, cjdadmin_port, cjdadmin_pass)
 class route:
     def __init__(self, ip, name, path, link):
         self.ip = ip
@@ -167,6 +200,7 @@ else:
     filename = 'map.png'
         
 # retrieve the node names from the page maintained by Mikey
+"""
 page = 'http://[fc5d:baa5:61fc:6ffd:9554:67f0:e290:7535]/nodes/list.json'
 print('Downloading the list of node names from {0} ...'.format(page))
 names = {}
@@ -182,37 +216,82 @@ for node in nameip:
         names[node['ip']]=node['name']
     else:
         names[node['ip']]=node['name'] + ' ' + ip.split(':')[-1]
+"""
+page = 'http://ircerr.bt-chat.com/cjdns/ipv6-cjdnet.data.txt'
+print('Downloading the list of node names from {0} ...'.format(page))
+names = {}
+h = httplib2.Http(".cache")
+r, content = h.request(page, "GET")
+
+existing_names = set()
+doubles = set()
+nameip = []
+for l in content.split('\n'):
+    l = l.strip()
+    if not l or l.startswith('#'):
+        continue
+    d = l.split(' ')
+    if len(d) < 2:
+        continue # use the standard last two bytes
+    ip   = d[0]
+    name = d[1]
+    nameip.append((name,ip))
+    if name in existing_names:
+        doubles.add(name)
+    existing_names.add(name)
+    
+for name,ip in nameip:
+    if not name in doubles:
+        names[ip]=name
+    else:
+        names[ip]=name + ' ' + ip.split(':')[-1]
 
 # retrieve the routing data from the admin interface
-# FIXME: read these from the commandline or even from the config
-HOST = 'localhost'
-PORT = 11234
-print('Retrieving the routing table from the admin interface at {0} port {1}'.format(HOST,PORT))
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((HOST, PORT))
-s.send('d1:q19:NodeStore_dumpTable4:txid4:....e')
-data = ''
-while True:
-    r = s.recv(1024)
-    data += r
-    if not r or len(data) % 1024:
-        break
-s.shutdown(socket.SHUT_RDWR)
-s.close()
-data = data.strip()
-bencode = decode(data)
+#HOST = 'localhost'
+#PORT = 11234
+#print('Retrieving the routing table from the admin interface at {0} port {1}'.format(HOST,PORT))
+#s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+#s.connect((HOST, PORT))
+#s.send('d1:q19:NodeStore_dumpTable4:txid4:....e')
+#data = ''
+#while True:
+#    r = s.recv(1024)
+#    data += r
+#    if not r or len(data) % 1024:
+#        break
+#s.shutdown(socket.SHUT_RDWR)
+#s.close()
+#data = data.strip()
+#bencode = decode(data)
 
-routes = []
-for r in bencode['routingTable']:
-    ip = r['ip']
-    path = r['path']
-    link = r['link']
-    if ip in names:
-        name = names[ip]
-    else:
-        name = ip.split(':')[-1]
-    r = route(ip,name,path,link)
-    routes.append(r)
+#routes = []
+#for r in bencode['routingTable']:
+#    ip = r['ip']
+#    path = r['path']
+#    link = r['link']
+#    if ip in names:
+#        name = names[ip]
+#    else:
+#        name = ip.split(':')[-1]
+#    r = route(ip,name,path,link)
+#    routes.append(r)
+routes = [];
+i = 0;
+while True:
+    table = cjdns.NodeStore_dumpTable(i)
+    for r in table['routingTable']:
+        name = r['ip'].split(':')[-1]
+        if r['ip'] in names:
+            name = names[r['ip']]
+        routes.append(route(r['ip'],name,r['path'],r['link']))
+#    for entry in routes:
+#        if (entry['link'] != 0):
+#            addresses[entry['ip']] = entry['path']
+#        #print entry['ip'] + '@' + entry['path'] + ' - ' + str(entry['link'])
+    if not 'more' in table:
+        break
+    i += 1
+
         
 # sort the routes on quality
 tmp = [(r.quality,r) for r in routes]
