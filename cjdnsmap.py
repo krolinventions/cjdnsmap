@@ -44,18 +44,20 @@ except:
     sys.exit()
 
 ######## SETTINGS ###############
-cjdadmin_ip = "127.0.0.1"	#
+cjdadmin_ip   = "127.0.0.1"	#
 cjdadmin_port = 11234		#
 cjdadmin_pass = "insecure_pass" #
+filename      = 'map.svg'	# Picks format based on filename. If it ends in .svg it's an svg, otherwise it's a png
 #################################
 
-if len(sys.argv) == 4:
+if len(sys.argv) == 5:
     cjdadmin_ip = sys.argv[1]
     cjdadmin_port = sys.argv[2]
     cjdadmin_pass = sys.argv[3]
+    filename = sys.argv[4]
 elif len(sys.argv) != 1:
     print "Usage is:"
-    print sys.argv[0] + " <ip> <port> <pass>"
+    print sys.argv[0] + " <ip> <port> <pass> <filename>"
     print "Or just specify it at the top of the python file"
 
 #################################################
@@ -193,11 +195,6 @@ class route:
             parent = parents[0][1]
             return parent
         return None
-        
-if len(sys.argv) > 1:
-    filename = sys.argv[-1]
-else:
-    filename = 'map.png'
         
 # retrieve the node names from the page maintained by Mikey
 page = 'http://[fc5d:baa5:61fc:6ffd:9554:67f0:e290:7535]/nodes/list.json'
@@ -364,7 +361,7 @@ def add_edges(active,color):
 add_edges(True,'black')
 add_edges(False,'grey')
 
-graph = pydot.Dot(graph_type='graph', K='2', splines='true', dpi='50', maxiter='10000', ranksep='2', nodesep='1', epsilon='0.1', overlap='true')
+graph = pydot.Dot(graph_type='graph', K='2', splines='true', dpi='50', maxiter='10000', ranksep='2', nodesep='1', epsilon='0.1', overlap='false')
 calculate_family_hues()
 for n in nodes.itervalues():
     graph.add_node(n.Node())
@@ -383,5 +380,8 @@ for pn,rn,weight,color,quality in edges:
     graph.add_edge(edge)
 
 print('Generating the map...')
-graph.write_png(filename, prog='fdp') # dot neato twopi fdp circo
+if filename.split(".")[-1] == "svg":
+    graph.write_svg(filename, prog='fdp')
+else:
+    graph.write_png(filename, prog='fdp')
 print('Map written to {0}'.format(filename))
