@@ -52,7 +52,7 @@ filename      = 'map.svg'	# Picks format based on filename. If it ends in .svg i
 
 if len(sys.argv) == 5:
     cjdadmin_ip = sys.argv[1]
-    cjdadmin_port = sys.argv[2]
+    cjdadmin_port = int(sys.argv[2])
     cjdadmin_pass = sys.argv[3]
     filename = sys.argv[4]
 elif len(sys.argv) != 1:
