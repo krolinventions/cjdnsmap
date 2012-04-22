@@ -97,7 +97,7 @@ def cjdns_connect(ipAddr, port, password):
     # Check our password.
     ret = callfunc(cjdns, "ping", password, {});
     if ('error' in ret):
-        raise Exception("Connect failed, incorrect admin password?\n" + ret);
+        raise Exception("Connect failed, incorrect admin password?\n");
 
     cjdns.functions = "";
     nl = "";
