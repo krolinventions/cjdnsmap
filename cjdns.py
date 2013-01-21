@@ -9,15 +9,25 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import sys;
+import os;
 import socket;
 import hashlib;
+import json;
 from bencode import *;
 
 BUFFER_SIZE = 69632;
 
 def callfunc(cjdns, funcName, password, args):
     sock = cjdns.socket;
+
+    # empty the socket if there's anything on it.
+    try:
+        sock.recv(BUFFER_SIZE, socket.MSG_DONTWAIT);
+    except:
+        pass;
+
     sock.send('d1:q6:cookiee');
     data = sock.recv(BUFFER_SIZE);
     benc = bdecode(data);
@@ -49,7 +59,7 @@ def cjdns_connect(ipAddr, port, password):
     sock.send('d1:q4:pinge');
     data = sock.recv(BUFFER_SIZE);
     if (data != 'd1:q4:ponge'):
-        raise Exception("Looks like " + ipAddr + ":" + port + " is to a non-cjdns socket.");
+        raise Exception("Looks like " + ipAddr + ":" + str(port) + " is to a non-cjdns socket.");
 
     # Get the functions and make the object
     sock.send('d1:q7:invalide');
@@ -97,7 +107,7 @@ def cjdns_connect(ipAddr, port, password):
     # Check our password.
     ret = callfunc(cjdns, "ping", password, {});
     if ('error' in ret):
-        raise Exception("Connect failed, incorrect admin password?\n");
+        raise Exception("Connect failed, incorrect admin password?\n" + str(ret))
 
     cjdns.functions = "";
     nl = "";
@@ -116,3 +126,22 @@ def cjdns_connect(ipAddr, port, password):
         cjdns.functions += ")";
 
     return cjdns;
+
+
+def cjdns_connectWithAdminInfo():
+    try:
+        adminInfo = open(os.getenv("HOME") + '/.cjdnsadmin', 'r');
+    except IOError:
+        print('Please create a file named .cjdnsadmin in your home directory with');
+        print('ip, port, and password of your cjdns engine in json.');
+        print('for example:');
+        print('{');
+        print('    "addr": "127.0.0.1",');
+        print('    "port": 11234,');
+        print('    "password": "You tell me! (you\'ll find it in your cjdroute.conf)"');
+        print('}');
+        raise;
+
+    data = json.load(adminInfo);
+    adminInfo.close();
+    return cjdns_connect(data['addr'], data['port'], data['password']);

@@ -18,6 +18,15 @@
 # - Color nodes depending on the number of connections
 #
 
+######## SETTINGS ###############
+credentialsFromConfig = True   # Whether or not to get cjdns credentials from ~/.cjdnsadmin
+nonames = False                 # Should we even bother trying to look up names?
+cjdadmin_ip   = "127.0.0.1"	    #
+cjdadmin_port = 11234           #
+cjdadmin_pass = "insecure_pass" #
+filename      = 'map.svg'	    # Picks format based on filename. If it ends in .svg it's an svg, otherwise it's a png
+#################################
+
 import re
 import socket
 import sys
@@ -36,29 +45,26 @@ except:
     print "sudo easy_install pydot"
     sys.exit()
 try:
-    from cjdns import cjdns_connect
+    from cjdns import cjdns_connect, cjdns_connectWithAdminInfo
 except:
     print "Requires cjdns python module. It should've been included"
     print "with this program. Please ensure that it's in the path. It"
     print "also comes with cjdns, check contrib/python/ in the cjdns source"
     sys.exit()
 
-######## SETTINGS ###############
-cjdadmin_ip   = "127.0.0.1"	#
-cjdadmin_port = 11234		#
-cjdadmin_pass = "insecure_pass" #
-filename      = 'map.svg'	# Picks format based on filename. If it ends in .svg it's an svg, otherwise it's a png
-#################################
 
 if len(sys.argv) == 5:
     cjdadmin_ip = sys.argv[1]
     cjdadmin_port = int(sys.argv[2])
     cjdadmin_pass = sys.argv[3]
     filename = sys.argv[4]
+elif len(sys.argv) == 2:
+    filename = sys.argv[1]
 elif len(sys.argv) != 1:
     print "Usage is:"
     print sys.argv[0] + " <ip> <port> <pass> <filename>"
-    print "Or just specify it at the top of the python file"
+    print "Or:"
+    print sys.argv[0] + " [<filename>]"
 
 #################################################
 # code from http://effbot.org/zone/bencode.htm
@@ -158,8 +164,11 @@ def hsv_to_color(h,s,v):
 
 ###################################################
 
-
-cjdns = cjdns_connect(cjdadmin_ip, cjdadmin_port, cjdadmin_pass)
+try:
+    cjdns = cjdns_connect(cjdadmin_ip, cjdadmin_port, cjdadmin_pass)
+except:
+    cjdns = cjdns_connectWithAdminInfo()
+    
 class route:
     def __init__(self, ip, name, path, link):
         self.ip = ip
@@ -201,11 +210,18 @@ page = 'http://[fc5d:baa5:61fc:6ffd:9554:67f0:e290:7535]/nodes/list.json'
 print('Downloading the list of node names from {0} ...'.format(page))
 names = {}
 h = httplib2.Http(".cache")
-r, content = h.request(page, "GET")
+if not nonames:
+    try:
+        r, content = h.request(page, "GET")
+        nameip = json.loads(content)['nodes']
+    except:
+        print "Connection to Mikey's nodelist failed, continuing without names"
+        nameip = {}
+else:
+    nameip = {}
 
 existing_names = set()
 doubles = set()
-nameip = json.loads(content)['nodes']
 
 for node in nameip:
     if not node['name'] in doubles:
