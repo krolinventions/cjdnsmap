@@ -58,6 +58,7 @@ if len(sys.argv) == 5:
     cjdadmin_port = int(sys.argv[2])
     cjdadmin_pass = sys.argv[3]
     filename = sys.argv[4]
+    print "Using credentials from argv"
 elif len(sys.argv) == 2:
     filename = sys.argv[1]
 elif len(sys.argv) != 1:
