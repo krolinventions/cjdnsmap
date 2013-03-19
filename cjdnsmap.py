@@ -18,12 +18,54 @@
 # - Color nodes depending on the number of connections
 #
 
-import pydot
+######## SETTINGS ###############
+credentialsFromConfig = True   # Whether or not to get cjdns credentials from ~/.cjdnsadmin
+nonames = False                 # Should we even bother trying to look up names?
+cjdadmin_ip   = "127.0.0.1"	    #
+cjdadmin_port = 11234           #
+cjdadmin_pass = "insecure_pass" #
+filename      = 'map.svg'	    # Picks format based on filename. If it ends in .svg it's an svg, otherwise it's a png
+#################################
+
 import re
 import socket
-import httplib2
 import sys
 import math
+import json
+try:
+    import httplib2
+except:
+    print "Requires httplib2, try: "
+    print "sudo easy_install httplib2"
+    sys.exit()
+try:
+    import pydot
+except:
+    print "Requires pydot, try:"
+    print "sudo easy_install pydot"
+    sys.exit()
+try:
+    from cjdns import cjdns_connect, cjdns_connectWithAdminInfo
+except:
+    print "Requires cjdns python module. It should've been included"
+    print "with this program. Please ensure that it's in the path. It"
+    print "also comes with cjdns, check contrib/python/ in the cjdns source"
+    sys.exit()
+
+
+if len(sys.argv) == 5:
+    cjdadmin_ip = sys.argv[1]
+    cjdadmin_port = int(sys.argv[2])
+    cjdadmin_pass = sys.argv[3]
+    filename = sys.argv[4]
+    print "Using credentials from argv"
+elif len(sys.argv) == 2:
+    filename = sys.argv[1]
+elif len(sys.argv) != 1:
+    print "Usage is:"
+    print sys.argv[0] + " <ip> <port> <pass> <filename>"
+    print "Or:"
+    print sys.argv[0] + " [<filename>]"
 
 #################################################
 # code from http://effbot.org/zone/bencode.htm
@@ -123,7 +165,11 @@ def hsv_to_color(h,s,v):
 
 ###################################################
 
-
+try:
+    cjdns = cjdns_connect(cjdadmin_ip, cjdadmin_port, cjdadmin_pass)
+except:
+    cjdns = cjdns_connectWithAdminInfo()
+    
 class route:
     def __init__(self, ip, name, path, link):
         self.ip = ip
@@ -149,7 +195,7 @@ class route:
         route = route.replace('y','0001')
         route = route.replace('x','0000')
         self.route = route[::-1].rstrip('0')[:-1]
-        self.quality = link / 536870.0 # LINK_STATE_MULTIPLIER
+        self.quality = link / 5366870.0 # LINK_STATE_MULTIPLIER
         
     def find_parent(self, routes):
         parents = [(len(other.route),other) for other in routes if self.route.startswith(other.route) and self != other]
@@ -160,13 +206,32 @@ class route:
             return parent
         return None
         
-if len(sys.argv) > 1:
-    filename = sys.argv[-1]
+# retrieve the node names from the page maintained by Mikey
+page = 'http://[fc5d:baa5:61fc:6ffd:9554:67f0:e290:7535]/nodes/list.json'
+print('Downloading the list of node names from {0} ...'.format(page))
+names = {}
+h = httplib2.Http(".cache")
+if not nonames:
+    try:
+        r, content = h.request(page, "GET")
+        nameip = json.loads(content)['nodes']
+    except:
+        print "Connection to Mikey's nodelist failed, continuing without names"
+        nameip = {}
 else:
-    filename = 'map.png'
-        
-# retrieve the node names from the page maintained by ircerr
-page = 'http://[fc38:4c2c:1a8f:3981:f2e7:c2b9:6870:6e84]/ipv6-cjdnet.data.txt'
+    nameip = {}
+
+existing_names = set()
+doubles = set()
+
+for node in nameip:
+    if not node['name'] in doubles:
+        names[node['ip']]=node['name']
+    else:
+        names[node['ip']]=node['name'] + ' ' + ip.split(':')[-1]
+
+"""
+page = 'http://ircerr.bt-chat.com/cjdns/ipv6-cjdnet.data.txt'
 print('Downloading the list of node names from {0} ...'.format(page))
 names = {}
 h = httplib2.Http(".cache")
@@ -194,37 +259,21 @@ for name,ip in nameip:
         names[ip]=name
     else:
         names[ip]=name + ' ' + ip.split(':')[-1]
+"""
 
-# retrieve the routing data from the admin interface
-# FIXME: read these from the commandline or even from the config
-HOST = 'localhost'
-PORT = 11234
-print('Retrieving the routing table from the admin interface at {0} port {1}'.format(HOST,PORT))
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.connect((HOST, PORT))
-s.send('d1:q19:NodeStore_dumpTable4:txid4:....e')
-data = ''
+routes = [];
+i = 0;
 while True:
-    r = s.recv(1024)
-    data += r
-    if not r or r.endswith('....e\n'):
+    table = cjdns.NodeStore_dumpTable(i)
+    for r in table['routingTable']:
+        name = r['ip'].split(':')[-1]
+        if r['ip'] in names:
+            name = names[r['ip']]
+        routes.append(route(r['ip'],name,r['path'],r['link']))
+    if not 'more' in table:
         break
-s.shutdown(socket.SHUT_RDWR)
-s.close()
-data = data.strip()
-bencode = decode(data)
+    i += 1
 
-routes = []
-for r in bencode['routingTable']:
-    ip = r['ip']
-    path = r['path']
-    link = r['link']
-    if ip in names:
-        name = names[ip]
-    else:
-        name = ip.split(':')[-1]
-    r = route(ip,name,path,link)
-    routes.append(r)
         
 # sort the routes on quality
 tmp = [(r.quality,r) for r in routes]
@@ -329,7 +378,7 @@ def add_edges(active,color):
 add_edges(True,'black')
 add_edges(False,'grey')
 
-graph = pydot.Dot(graph_type='graph', K='2', splines='true', dpi='50', maxiter='10000', ranksep='2', nodesep='1', epsilon='0.1', overlap='true')
+graph = pydot.Dot(graph_type='graph', K='2', splines='true', dpi='50', maxiter='10000', ranksep='2', nodesep='1', epsilon='0.1', overlap='false')
 calculate_family_hues()
 for n in nodes.itervalues():
     graph.add_node(n.Node())
@@ -348,5 +397,8 @@ for pn,rn,weight,color,quality in edges:
     graph.add_edge(edge)
 
 print('Generating the map...')
-graph.write_png(filename, prog='fdp') # dot neato twopi fdp circo
+if filename.split(".")[-1] == "svg":
+    graph.write_svg(filename, prog='fdp')
+else:
+    graph.write_png(filename, prog='fdp')
 print('Map written to {0}'.format(filename))
